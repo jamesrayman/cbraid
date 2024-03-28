@@ -189,12 +189,14 @@ private:
     // Permutation table.
     sint16* pTable;
 
+    // Is the factor positive or negative?
+    bool positive;
 public:
 
     // Constructor.  The permutation table is initialized as
     // delta^k. If k == Uninitialize, the table is left uninitialized.
     enum { Uninitialize = 0x80000000 };
-    Factor(sint16 n, sint32 k = Uninitialize);
+    Factor(sint16 n, bool s = true, sint32 k = Uninitialize);
 
     // Copy constructor.
     Factor(const Factor& f);
@@ -228,6 +230,9 @@ public:
     sint16 At(sint16 n) const;
     sint16& operator[](sint16 n);
     sint16 operator[](sint16 n) const;
+
+    // Is this factor positive or negative?
+    bool Positive() const;
 
     // Assignment operator.
     Factor& Assign(const Factor& f);
@@ -295,10 +300,11 @@ Factor<P> LeftMeet(const Factor<P>& a, const Factor<P>& b);
 template<class P>
 Factor<P> RightMeet(const Factor<P>& a, const Factor<P>& b);
 
-// Make two factors left (or right) weighted.  false is returned if
-// and only if they are already weighted.
+// Make two factors left (or right or center) weighted.  false is returned
+// if and only if they are already weighted.
 template<class P> bool MakeLeftWeighted(Factor<P>& a, Factor<P>& b);
 template<class P> bool MakeRightWeighted(Factor<P>& a, Factor<P>& b);
+template<class P> bool MakeCenterWeighted(Factor<P>& a, Factor<P>& b);
 
 // Output (the permutation table of) a factor through ostream.
 template<class P>
@@ -340,9 +346,6 @@ private:
 public:
     // Powers of deltas at ends.
     sint32 LeftDelta, RightDelta;
-
-    // Length of the canonical factor list.
-    sint32 CLength;
 
     // List of canonical factors.  According to my experiments, usual
     // operations on a list of pointers to objects is much faster
@@ -418,6 +421,7 @@ public:
     // Convertion into canonical forms.
     Braid& MakeLCF();
     Braid& MakeRCF();
+    Braid& MakeMCF();
 
     // Reduce the maximal left/right lower/upper subbraid.  By
     // definition, a is the maximal left lower subbraid of a
@@ -434,6 +438,11 @@ private:
     Braid ReduceLeftSub(const Factor<P>& f);
     Braid ReduceRightSub(const Factor<P>& f);
 
+    // Subroutines used by Make{L,R,M}CF().
+    void ClearIdentityFactorsLeft();
+    void ClearIdentityFactorsRight();
+    void DischargeLeftDelta();
+    void DischargeRightDelta();
 public:
     // Generate a random braid. The result is a braid consisting
     // of cl randomly chosen canonical factors with RightDelta and

@@ -372,10 +372,11 @@ inline void BandPresentation::RightMeet(
 
 
 template<class P>
-inline Factor<P>::Factor(sint16 n, sint32 k)
+inline Factor<P>::Factor(sint16 n, bool s, sint32 k)
     : Pres(n)
 {
     pTable = new sint16[Index()];
+    positive = s;
 
 #ifdef DEBUG
     if (pTable == 0) {
@@ -451,7 +452,7 @@ inline Factor<P>& Factor<P>::LowerDelta(sint32 k)
         throw OddIndexError();
     sint16 n = Index()/2;
 
-    Factor lf(n, k);
+    Factor lf(n, true, k);
     for(sint32 i = 1; i <= n; ++i) {
         At(i) = lf[i];
         At(i+n) = i+n;
@@ -467,7 +468,7 @@ inline Factor<P>& Factor<P>::UpperDelta(sint32 k)
         throw OddIndexError();
     sint16 n = Index()/2;
 
-    Factor lf(n, k);
+    Factor lf(n, true, k);
     for(sint32 i = 1; i <= n; ++i) {
         At(i) = i;
         At(i+n) = lf[i]+n;
@@ -509,6 +510,10 @@ inline sint16 Factor<P>::operator[](sint16 n) const {
     return At(n);
 }
 
+template<class P>
+inline bool Factor<P>::Positive() const {
+    return positive;
+}
 
 template<class P>
 inline Factor<P>& Factor<P>::Assign(const Factor<P>& f)
@@ -526,6 +531,8 @@ inline Factor<P>& Factor<P>::Assign(const Factor<P>& f)
             At(i) = f[i];
         }
     }
+    positive = f.positive;
+
     return *this;
 }
 
@@ -598,7 +605,7 @@ inline Factor<P> Factor<P>::Composition(
         exit(1);
     }
 #endif
-    Factor f(Index());
+    Factor f(Index(), Positive());
     for(sint16 i = 1; i <= Index(); ++i)
         f[i] = a[At(i)];
     return f;
@@ -662,7 +669,7 @@ inline Factor<P> Factor<P>::operator!() const
 template<class P>
 inline Factor<P> Factor<P>::Flip(sint32 k) const
 {
-    Factor f(Index());
+    Factor f(Index(), Positive());
     for(sint16 i = 1; i <= Index(); ++i)
         f[i] = Pres.DeltaTable(At(Pres.DeltaTable(i, -k)), k);
     return f;
@@ -687,7 +694,7 @@ inline Factor<P> Factor<P>::LeftMeet(const Factor<P>& a) const
     }
 #endif
 
-    Factor<P> r(Index());
+    Factor<P> r(Index(), Positive());
     Pres.LeftMeet(*this, a, r);
     return r;
 }
@@ -704,7 +711,7 @@ inline Factor<P> Factor<P>::RightMeet(const Factor<P>& a) const
     }
 #endif
 
-    Factor<P> r(Index());
+    Factor<P> r(Index(), Positive());
     Pres.RightMeet(*this, a, r);
     return r;
 }
@@ -743,7 +750,7 @@ inline bool MakeLeftWeighted(Factor<P>&a, Factor<P>&b)
     }
 #endif
 
-    Factor<P> x = LeftMeet((!a)*Factor<P>(a.Index(), 1), b);
+    Factor<P> x = LeftMeet((!a)*Factor<P>(a.Index(), a.Positive(), 1), b);
     if (x.CompareWithIdentity())
         return false;
     else {
@@ -765,7 +772,7 @@ inline bool MakeRightWeighted(Factor<P>& a, Factor<P>& b)
     }
 #endif
 
-    Factor<P> x = RightMeet(a, Factor<P>(b.Index(), 1)*!b);
+    Factor<P> x = RightMeet(a, Factor<P>(b.Index(), b.Positive(), 1)*!b);
     if (x.CompareWithIdentity())
         return false;
     else {
@@ -773,6 +780,30 @@ inline bool MakeRightWeighted(Factor<P>& a, Factor<P>& b)
         b = x*b;
         return true;
     }
+}
+
+template<class P>
+inline bool MakeCenterWeighted(Factor<P>& a, Factor<P>& b)
+{
+
+#ifdef DEBUG
+    if (a.Index() != b.Index()) {
+        std::cerr << "MakeCenterWeighted(Factor<P>, Factor<P>): Index mismatch.\n";
+        exit(1);
+    }
+#endif
+    if (a.Positive() && b.Positive()) {
+        return MakeLeftWeighted(a, b);
+    }
+    if (!a.Positive() && !b.Positive()) {
+        return MakeRightWeighted(a, b);
+    }
+    if (a.Positive() && !b.Positive()) {
+        // TODO: swap signs
+    }
+
+    // TODO: Cancel common factor
+    return false;
 }
 
 
@@ -801,7 +832,8 @@ inline Braid<P>::Braid(const Braid& b)
     LeftDelta(b.LeftDelta),
     RightDelta(b.RightDelta),
     FactorList(b.FactorList)
-{}
+{
+}
 
 
 template<class P>
@@ -1030,40 +1062,78 @@ inline Braid<P>& Braid<P>::operator*=(const Braid& a)
 template<class P>
 typename Braid<P>::CanonicalFactor Braid<P>::GetPerm() const
 {
-    Factor<P> p(Index(), LeftDelta);
+    Factor<P> p(Index(), true, LeftDelta);
     FactorItr it = FactorList.begin();
     while (it != FactorList.end())
         p *= *(it++);
-    return p *= Factor<P>(Index(), RightDelta);
+    return p *= Factor<P>(Index(), true, RightDelta);
 }
 
+template<class P>
+void Braid<P>::ClearIdentityFactorsLeft()
+{
+#if __cplusplus >= 201103L
+    erase_front_if(FactorList, [](Factor<P>& F) { return F.CompareWithIdentity(); });
+#else
+    erase_front_if(FactorList, std::mem_fun_ref(&Factor<P>::CompareWithIdentity));
+#endif
+}
+
+template<class P>
+void Braid<P>::ClearIdentityFactorsRight()
+{
+#if __cplusplus >= 201103L
+    erase_back_if(FactorList, [](Factor<P>& F) { return F.CompareWithIdentity(); });
+#else
+    erase_back_if(FactorList, std::mem_fun_ref(&Factor<P>::CompareWithIdentity));
+#endif
+}
+
+template<class P>
+void Braid<P>::DischargeLeftDelta()
+{
+    transform(FactorList.begin(), FactorList.end(), FactorList.begin(),
+#if __cplusplus >= 201103L
+        [this](Factor<P>& F) { return F.Flip(-LeftDelta); }
+#else
+        std::bind2nd(std::mem_fun_ref(&Factor<P>::Flip), -LeftDelta)
+#endif
+    );
+    RightDelta += LeftDelta;
+    LeftDelta = 0;
+}
+
+template<class P>
+void Braid<P>::DischargeRightDelta()
+{
+    transform(FactorList.begin(), FactorList.end(), FactorList.begin(),
+#if __cplusplus >= 201103L
+        [this](Factor<P>& F) { return F.Flip(RightDelta); });
+#else
+        std::bind2nd(std::mem_fun_ref(&Factor<P>::Flip), RightDelta));
+#endif
+    LeftDelta += RightDelta;
+    RightDelta = 0;
+}
 
 template<class P>
 Braid<P>& Braid<P>::MakeLCF()
 {
     if (RightDelta != 0) {
-        transform(FactorList.begin(), FactorList.end(), FactorList.begin(),
-#if __cplusplus >= 201103L
-		  [this](Factor<P>& F) { return F.Flip(RightDelta); });
-#else
-             std::bind2nd(std::mem_fun_ref(&Factor<P>::Flip), RightDelta));
-#endif
-        LeftDelta += RightDelta;
-        RightDelta = 0;
+        DischargeRightDelta();
     }
 #if __cplusplus >= 201103L
     bubble_sort(FactorList.begin(), FactorList.end(), MakeLeftWeighted<P>);
     LeftDelta += erase_front_if(
         FactorList, [](Factor<P>& F) { return F.CompareWithDelta(1); });
-;
-    erase_back_if(FactorList, [](Factor<P>& F) { return F.CompareWithIdentity(); });
 #else
     bubble_sort(FactorList.begin(), FactorList.end(),
                 std::ptr_fun(MakeLeftWeighted<P>));
     LeftDelta += erase_front_if(
         FactorList, std::bind2nd(std::mem_fun_ref(&Factor<P>::CompareWithDelta), 1));
-    erase_back_if(FactorList, std::mem_fun_ref(&Factor<P>::CompareWithIdentity));
 #endif
+    ClearIdentityFactorsRight();
+
     return *this;
 }
 
@@ -1072,28 +1142,53 @@ template<class P>
 Braid<P>& Braid<P>::MakeRCF()
 {
     if (LeftDelta != 0) {
-        transform(FactorList.begin(), FactorList.end(), FactorList.begin(),
-#if __cplusplus >= 201103L
-		  [this](Factor<P>& F) { return F.Flip(-LeftDelta); });
-#else
-                 std::bind2nd(std::mem_fun_ref(&Factor<P>::Flip), -LeftDelta));
-#endif
-        RightDelta += LeftDelta;
-        LeftDelta = 0;
+        DischargeLeftDelta();
     }
 #if __cplusplus >= 201103L
     bubble_sort(FactorList.begin(), FactorList.end(), MakeRightWeighted<P>);
     RightDelta += erase_back_if(
         FactorList, [](Factor<P>& F) { return F.CompareWithDelta(1); });
-;
-    erase_front_if(FactorList, [](Factor<P>& F) { return F.CompareWithIdentity(); });
 #else
     bubble_sort(FactorList.begin(), FactorList.end(),
                 std::ptr_fun(&MakeRightWeighted<P>));
     RightDelta += erase_back_if(
         FactorList, std::bind2nd(std::mem_fun_ref(&Factor<P>::CompareWithDelta), 1));
-    erase_front_if(FactorList, std::mem_fun_ref(&Factor<P>::CompareWithIdentity));
 #endif
+    ClearIdentityFactorsLeft();
+
+    return *this;
+}
+
+template<class P>
+Braid<P>& Braid<P>::MakeMCF()
+{
+    if (LeftDelta > 0) {
+        DischargeLeftDelta();
+    }
+    if (RightDelta < 0) {
+        DischargeRightDelta();
+    }
+
+    return *this;
+
+    while (RightDelta > 0) {
+        FactorList.push_back(Factor<P>(Index(), true, 1));
+        RightDelta--;
+    }
+    while (LeftDelta < 0) {
+        FactorList.push_front(Factor<P>(Index(), false, 1));
+        LeftDelta++;
+    }
+
+#if __cplusplus >= 201103L
+    bubble_sort(FactorList.begin(), FactorList.end(), MakeCenterWeighted<P>);
+#else
+    bubble_sort(FactorList.begin(), FactorList.end(), std::ptr_fun(&MakeCenterWeighted<P>));
+#endif
+
+    ClearIdentityFactorsLeft();
+    ClearIdentityFactorsRight();
+
     return *this;
 }
 

@@ -230,6 +230,7 @@ void PrintBraidWord(ArtinBraid B)
 	{
 	  for(j=i; j>1 && F[j]<F[j-1]; j--)
 	    {
+	      // if (!F.Positive()) cout << "-";
 	      cout << j-1 << " ";
 	      k=F[j];
 	      F[j]=F[j-1];
@@ -294,6 +295,7 @@ void PrintBraidWord(ArtinBraid B, char * file)
 	{
 	  for(j=i; j>1 && F[j]<F[j-1]; j--)
 	    {
+	      // if (!F.Positive()) cout << "-";
 	      f << j-1 << " ";
 	      k=F[j];
 	      F[j]=F[j-1];

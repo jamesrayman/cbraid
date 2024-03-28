@@ -73,17 +73,17 @@ int main()
 	   << endl
 	   << "l: Left Normal Form          r: Right Normal Form       " << endl
 	   << endl
-	   << "p: Permutation               x: Crossing numbers        " << endl
+	   << "m: Mixed Normal Form         p: Permutation             " << endl
 	   << endl
-	   << "v: Least Common Multiple     ^: Greatest Common Divisor " << endl
+	   << "x: Crossing numbers          v: Least Common Multiple   " << endl
 	   << endl
-	   << "s: Super Summit Set          z: Centralizer             " << endl
+	   << "^: Greatest Common Divisor   s: Super Summit Set        " << endl
 	   << endl
-	   << "e: Conjugacy Test            u: Ultra Summit Set        " << endl
+	   << "z: Centralizer               e: Conjugacy Test          " << endl
 	   << endl
-       << "t: Set of Sliding Circuits   a: Ask for Powers (On/Off)   " << endl
-       << endl
-       << "q: Quit             " << endl;
+	   << "u: Ultra Summit Set          t: Set of Sliding Circuits " << endl
+	   << endl
+	   << "a: Ask for Powers (On/Off)   q: Quit                    " << endl;
 
       while(1)
 	{
@@ -97,7 +97,7 @@ int main()
 
 	  /////////////////////////////////////////////////////////////
 
-	  if(c=='l' || c=='r')
+	  if(c=='l' || c=='r' || c=='m')
 	    {
 	      n=ReadIndex();
 	      word=ReadWord(n);
@@ -134,8 +134,7 @@ int main()
 
 	      if(c=='r')
 		{
-		  cout << endl << "The Right Normal Form is: "
-		       << endl << endl;
+		  cout << endl << "The Right Normal Form is: " << endl << endl;
 		  PrintBraidWord(B.MakeRCF());
 		  cout << endl;
 
@@ -151,6 +150,26 @@ int main()
 		  f << "is: " << endl << endl;
 		  f.close();
 		  PrintBraidWord(B.MakeRCF(),file);
+		}
+
+	      if(c=='m')
+		{
+		  cout << endl << "The Mixed Normal Form is: " << endl << endl;
+		  PrintBraidWord(B.MakeMCF());
+		  cout << endl;
+
+		  f.open(file);
+		  f << endl << "The Mixed Normal Form of the braid on "
+		    << n << " strands" << endl << endl;
+		  f.close();
+		  PrintWord(word,n,power,file);
+		  f.open(file,ios::app);
+
+		  f << endl << endl;
+
+		  f << "is: " << endl << endl;
+		  f.close();
+		  PrintBraidWord(B.MakeMCF(),file);
 		}
 
 	      word.clear();
