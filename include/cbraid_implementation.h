@@ -372,7 +372,7 @@ inline void BandPresentation::RightMeet(
 
 
 template<class P>
-inline Factor<P>::Factor(sint16 n, bool s, sint32 k)
+inline Factor<P>::Factor(sint16 n, sint32 k, bool s)
     : Pres(n)
 {
     pTable = new sint16[Index()];
@@ -452,7 +452,7 @@ inline Factor<P>& Factor<P>::LowerDelta(sint32 k)
         throw OddIndexError();
     sint16 n = Index()/2;
 
-    Factor lf(n, true, k);
+    Factor lf(n, k);
     for(sint32 i = 1; i <= n; ++i) {
         At(i) = lf[i];
         At(i+n) = i+n;
@@ -468,7 +468,7 @@ inline Factor<P>& Factor<P>::UpperDelta(sint32 k)
         throw OddIndexError();
     sint16 n = Index()/2;
 
-    Factor lf(n, true, k);
+    Factor lf(n, k);
     for(sint32 i = 1; i <= n; ++i) {
         At(i) = i;
         At(i+n) = lf[i]+n;
@@ -513,6 +513,11 @@ inline sint16 Factor<P>::operator[](sint16 n) const {
 template<class P>
 inline bool Factor<P>::Positive() const {
     return positive;
+}
+
+template<class P>
+inline void Factor<P>::SetPositive(bool s) {
+    positive = s;
 }
 
 template<class P>
@@ -605,7 +610,7 @@ inline Factor<P> Factor<P>::Composition(
         exit(1);
     }
 #endif
-    Factor f(Index(), Positive());
+    Factor f(Index(), Uninitialize, Positive());
     for(sint16 i = 1; i <= Index(); ++i)
         f[i] = a[At(i)];
     return f;
@@ -645,7 +650,7 @@ inline Factor<P> Factor<P>::operator*(const Factor& a) const
 template<class P>
 inline Factor<P> Factor<P>::Inverse() const
 {
-    Factor f(Index());
+    Factor f(Index(), Uninitialize, !Positive());
     for(sint16 i = 1; i <= Index(); ++i)
         f[At(i)] = i;
     return f;
@@ -669,7 +674,7 @@ inline Factor<P> Factor<P>::operator!() const
 template<class P>
 inline Factor<P> Factor<P>::Flip(sint32 k) const
 {
-    Factor f(Index(), Positive());
+    Factor f(Index(), Uninitialize, Positive());
     for(sint16 i = 1; i <= Index(); ++i)
         f[i] = Pres.DeltaTable(At(Pres.DeltaTable(i, -k)), k);
     return f;
@@ -694,7 +699,7 @@ inline Factor<P> Factor<P>::LeftMeet(const Factor<P>& a) const
     }
 #endif
 
-    Factor<P> r(Index(), Positive());
+    Factor<P> r(Index(), Uninitialize, Positive());
     Pres.LeftMeet(*this, a, r);
     return r;
 }
@@ -711,7 +716,7 @@ inline Factor<P> Factor<P>::RightMeet(const Factor<P>& a) const
     }
 #endif
 
-    Factor<P> r(Index(), Positive());
+    Factor<P> r(Index(), Uninitialize, Positive());
     Pres.RightMeet(*this, a, r);
     return r;
 }
@@ -750,12 +755,13 @@ inline bool MakeLeftWeighted(Factor<P>&a, Factor<P>&b)
     }
 #endif
 
-    Factor<P> x = LeftMeet((!a)*Factor<P>(a.Index(), a.Positive(), 1), b);
+    Factor<P> x = LeftMeet((!a)*Factor<P>(a.Index(), 1, a.Positive()), b);
     if (x.CompareWithIdentity())
         return false;
     else {
         a *= x;
         b = (!x)*b;
+        b.SetPositive(a.Positive());
         return true;
     }
 }
@@ -772,12 +778,13 @@ inline bool MakeRightWeighted(Factor<P>& a, Factor<P>& b)
     }
 #endif
 
-    Factor<P> x = RightMeet(a, Factor<P>(b.Index(), b.Positive(), 1)*!b);
+    Factor<P> x = RightMeet(a, Factor<P>(b.Index(), 1, b.Positive())*!b);
     if (x.CompareWithIdentity())
         return false;
     else {
         a *= !x;
         b = x*b;
+        b.SetPositive(a.Positive());
         return true;
     }
 }
@@ -799,11 +806,21 @@ inline bool MakeCenterWeighted(Factor<P>& a, Factor<P>& b)
         return MakeRightWeighted(a, b);
     }
     if (a.Positive() && !b.Positive()) {
-        // TODO: swap signs
+        a = a * Factor<P>(a.Index(), 1, false);
+        a.SetPositive(false);
+        b = Factor<P>(a.Index(), 1, true) * b;
+        b.SetPositive(true);
     }
 
-    // TODO: Cancel common factor
-    return false;
+    Factor<P> x = RightMeet(a, !b);
+    if (x.CompareWithIdentity())
+        return false;
+    else {
+        a *= !x;
+        b = x*b;
+        b.SetPositive(true);
+        return true;
+    }
 }
 
 
@@ -1066,7 +1083,7 @@ typename Braid<P>::CanonicalFactor Braid<P>::GetPerm() const
     FactorItr it = FactorList.begin();
     while (it != FactorList.end())
         p *= *(it++);
-    return p *= Factor<P>(Index(), true, RightDelta);
+    return p *= Factor<P>(Index(), RightDelta);
 }
 
 template<class P>
@@ -1169,14 +1186,12 @@ Braid<P>& Braid<P>::MakeMCF()
         DischargeRightDelta();
     }
 
-    return *this;
-
     while (RightDelta > 0) {
-        FactorList.push_back(Factor<P>(Index(), true, 1));
+        FactorList.push_back(Factor<P>(Index(), 1, true));
         RightDelta--;
     }
     while (LeftDelta < 0) {
-        FactorList.push_front(Factor<P>(Index(), false, 1));
+        FactorList.push_front(Factor<P>(Index(), 1, false));
         LeftDelta++;
     }
 

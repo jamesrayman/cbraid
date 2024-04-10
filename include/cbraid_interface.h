@@ -196,7 +196,7 @@ public:
     // Constructor.  The permutation table is initialized as
     // delta^k. If k == Uninitialize, the table is left uninitialized.
     enum { Uninitialize = 0x80000000 };
-    Factor(sint16 n, bool s = true, sint32 k = Uninitialize);
+    Factor(sint16 n, sint32 k = Uninitialize, bool s = true);
 
     // Copy constructor.
     Factor(const Factor& f);
@@ -233,6 +233,8 @@ public:
 
     // Is this factor positive or negative?
     bool Positive() const;
+
+    void SetPositive(bool s);
 
     // Assignment operator.
     Factor& Assign(const Factor& f);
