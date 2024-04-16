@@ -38,6 +38,8 @@
 // Global option variables.
 int Index = 6;
 int CLength = 5;
+int LeftDelta = -2;
+int RightDelta = -2;
 bool bVerbose = false;
 int CLibRandomSeed = 0;
 
@@ -47,29 +49,34 @@ template<> const char* TypeName<CBraid::BandBraid>() { return "BandBraid"; }
 
 
 template<class B>
-bool CFormMulTest(B& (B::*pMakeCForm)())
+bool CFormMulTest(B& (B::*pMakeCForm)(), const char* name)
 {
     using namespace CBraid;
     using namespace std;
 
     B a(Index), b(Index), c(Index), d(Index);
 
-    cout << "a=" << a.Randomize(CLength) << endl
-        << "b=" << b.Randomize(CLength) << endl;
+    a.Randomize(CLength);
+    b.Randomize(CLength);
+    a.LeftDelta = b.LeftDelta = LeftDelta;
+    a.RightDelta = b.RightDelta = RightDelta;
+
+    cout << "a=" << a << endl
+        << "b=" << b << endl;
     cout << "CF(a*b)=" << ((c = a*b).*pMakeCForm)() << endl;
     cout << "CF(a)=" << (a.*pMakeCForm)() << endl
         << "CF(b)=" << (b.*pMakeCForm)() << endl;
-    cout << "CF(LCF(a)*CF(b))=" << ((d = a*b).*pMakeCForm)() << endl;
+    cout << "CF(CF(a)*CF(b))=" << ((d = a*b).*pMakeCForm)() << endl;
     bool rc = (c == d);
     cout << (rc ? "\nPassed: " : "\nFailed: ")
-         << (pMakeCForm == &B::MakeLCF ? "Left" : "Right")
+         << name
          << " canonical form and multiplication test for "
          << TypeName<B>() << endl << endl << flush;
     return rc;
 }
 
 template <class B>
-bool CFormInvTest(B& (B::*pMakeCForm)())
+bool CFormInvTest(B& (B::*pMakeCForm)(), const char* name)
 {
     using namespace CBraid;
     using namespace std;
@@ -81,7 +88,7 @@ bool CFormInvTest(B& (B::*pMakeCForm)())
     cout << "CF(a*b)=" << ((c=a*b).*pMakeCForm)() << endl;
     bool rc = c.CompareWithIdentity();
     cout << (rc ? "\nPassed: " : "\nFailed: ")
-         << (pMakeCForm == &B::MakeLCF ? "Left" : "Right")
+         << name
          << " canonical form and inversion test for "
          << TypeName<B>() << endl << endl << flush;
     return rc;
@@ -165,6 +172,8 @@ int main(int argc, char* argv[])
     OptArg::optmap m;
     m << OptArg::opt("-index", OptArg::int_arg, &Index)
       << OptArg::opt("-clength", OptArg::int_arg, &CLength)
+      << OptArg::opt("-ldelta", OptArg::int_arg, &LeftDelta)
+      << OptArg::opt("-rdelta", OptArg::int_arg, &RightDelta)
       << OptArg::opt("-verbose", OptArg::bool_true_arg, &bVerbose)
       << OptArg::opt("-srand", OptArg::int_arg, &CLibRandomSeed);
     try {
@@ -178,14 +187,16 @@ int main(int argc, char* argv[])
     if (CLibRandomSeed)
         srand(CLibRandomSeed);
 
-    if (!CFormMulTest(&ArtinBraid::MakeLCF) ||
-        !CFormInvTest(&ArtinBraid::MakeLCF) ||
-        !CFormMulTest(&ArtinBraid::MakeRCF) ||
-        !CFormInvTest(&ArtinBraid::MakeRCF) ||
-        !CFormMulTest(&BandBraid::MakeLCF) ||
-        !CFormInvTest(&BandBraid::MakeLCF) ||
-        !CFormMulTest(&BandBraid::MakeRCF) ||
-        !CFormInvTest(&BandBraid::MakeRCF) ||
+    if (!CFormMulTest(&ArtinBraid::MakeLCF, "Left") ||
+        !CFormInvTest(&ArtinBraid::MakeLCF, "Left") ||
+        !CFormMulTest(&ArtinBraid::MakeRCF, "Right") ||
+        !CFormInvTest(&ArtinBraid::MakeRCF, "Right") ||
+        !CFormMulTest(&ArtinBraid::MakeMCF, "Mixed") ||
+        !CFormInvTest(&ArtinBraid::MakeMCF, "Mixed") ||
+        !CFormMulTest(&BandBraid::MakeLCF, "Left") ||
+        !CFormInvTest(&BandBraid::MakeLCF, "Left") ||
+        !CFormMulTest(&BandBraid::MakeRCF, "Right") ||
+        !CFormInvTest(&BandBraid::MakeRCF, "Right") ||
         !LeftReductionTest(&ArtinBraid::ReduceLeftLower) ||
         !LeftReductionTest(&ArtinBraid::ReduceLeftUpper) ||
         !RightReductionTest(&ArtinBraid::ReduceRightLower) ||

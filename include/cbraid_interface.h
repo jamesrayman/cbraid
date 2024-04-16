@@ -111,6 +111,7 @@ protected:
 public:
     ArtinPresentation(sint16 n);
     sint16 Index() const;
+    void SetIndex(sint16 n);
 
     // Return the i-th entry of the permutation table of delta^k.
     sint16 DeltaTable(sint16 i, sint32 k = 1) const;
@@ -149,6 +150,7 @@ protected:
 public:
     BandPresentation(sint16 n);
     sint16 Index() const;
+    void SetIndex(sint16 n);
 
     // Return the i-th entry of the permutation table of delta^k.
     sint16 DeltaTable(sint16 i, sint32 k = 1) const;
@@ -291,6 +293,9 @@ public:
     // the left (resp. right) meet of b and a.
     Factor LeftMeet(const Factor& a) const;
     Factor RightMeet(const Factor& a) const;
+
+    bool CanMerge(sint16 i) const;
+    Factor Merge(sint16 i) const;
 
     // Generate a random factor.
     Factor& Randomize();
@@ -446,6 +451,9 @@ private:
     void DischargeLeftDelta();
     void DischargeRightDelta();
 public:
+    bool CanMerge(sint32 i) const;
+    Braid Merge(sint32 i) const;
+
     // Generate a random braid. The result is a braid consisting
     // of cl randomly chosen canonical factors with RightDelta and
     // LeftDelta zero.

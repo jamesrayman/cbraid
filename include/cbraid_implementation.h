@@ -129,6 +129,10 @@ inline sint16 ArtinPresentation::Index() const
 {
     return PresentationIndex;
 }
+inline void ArtinPresentation::SetIndex(sint16 n)
+{
+    PresentationIndex = n;
+}
 
 
 inline sint16 ArtinPresentation::DeltaTable(sint16 i, sint32 k) const
@@ -201,6 +205,11 @@ inline sint16 BandPresentation::Index() const
 {
     return PresentationIndex;
 }
+inline void BandPresentation::SetIndex(sint16 n)
+{
+    PresentationIndex = n;
+}
+
 
 
 inline sint16 BandPresentation::DeltaTable(sint16 i, sint32 k) const
@@ -393,17 +402,8 @@ inline Factor<P>::Factor(sint16 n, sint32 k, bool s)
 
 template <class P>
 inline Factor<P>::Factor(const Factor& f)
-    : Pres(f.Index())
+    : Pres(f.Index()), pTable(new sint16[f.Index()])
 {
-    pTable = new sint16[Index()];
-
-#ifdef DEBUG
-    if (pTable == 0) {
-        std::cerr << "Factor<P>::Factor<P>(): Memory allocation error.\n";
-        exit(1);
-    }
-#endif
-
     Assign(f);
 }
 
@@ -523,13 +523,13 @@ inline void Factor<P>::SetPositive(bool s) {
 template<class P>
 inline Factor<P>& Factor<P>::Assign(const Factor<P>& f)
 {
-
-#ifdef DEBUG
     if (Index() != f.Index()) {
-        std::cerr << "Factor<P>::Assign(): Index mismatch.\n";
-        exit(1);
+        if (pTable != nullptr) {
+            delete[] pTable;
+        }
+        pTable = new sint16[f.Index()];
+        Pres.SetIndex(f.Index());
     }
-#endif
 
     if (&f != this) {
         for(sint16 i = 1; i <= Index(); ++i) {
@@ -564,7 +564,7 @@ inline bool Factor<P>::Compare(const Factor<P>& f) const
         if (At(i) != f[i])
             return false;
     }
-    return true;
+    return CompareWithIdentity() || Positive() == f.Positive();
 }
 
 
@@ -721,6 +721,26 @@ inline Factor<P> Factor<P>::RightMeet(const Factor<P>& a) const
     return r;
 }
 
+template<class P>
+inline bool Factor<P>::CanMerge(sint16 i) const
+{
+    return At(i) + 1 == At(i+1);
+}
+
+template<class P>
+inline Factor<P> Factor<P>::Merge(sint16 i) const
+{
+    Factor f (Index()-1, Uninitialize, Positive());
+
+    for (sint16 j = 1; j <= Index()-1; j++) {
+        auto x = At(j + (j > i ? 1 : 0));
+        if (x > At(i)) {
+            x--;
+        }
+        f[j] = x;
+    }
+    return f;
+}
 
 template<class P>
 inline Factor<P>& Factor<P>::Randomize()
@@ -799,6 +819,8 @@ inline bool MakeCenterWeighted(Factor<P>& a, Factor<P>& b)
         exit(1);
     }
 #endif
+    bool ret = false;
+
     if (a.Positive() && b.Positive()) {
         return MakeLeftWeighted(a, b);
     }
@@ -810,11 +832,12 @@ inline bool MakeCenterWeighted(Factor<P>& a, Factor<P>& b)
         a.SetPositive(false);
         b = Factor<P>(a.Index(), 1, true) * b;
         b.SetPositive(true);
+        ret = true;
     }
 
     Factor<P> x = RightMeet(a, !b);
     if (x.CompareWithIdentity())
-        return false;
+        return ret;
     else {
         a *= !x;
         b = x*b;
@@ -888,14 +911,6 @@ inline Braid<P>& Braid<P>::Identity()
 template<class P>
 inline Braid<P>& Braid<P>::Assign(const Braid& b)
 {
-
-#ifdef DEBUG
-    if (Index() != b.Index()) {
-        std::cerr << "Braid<P>::Assign(): Index mismatch.\n";
-        exit(1);
-    }
-#endif
-
     Pres = b.Pres;
     LeftDelta = b.LeftDelta;
     RightDelta = b.RightDelta;
@@ -1309,6 +1324,29 @@ Braid<P> Braid<P>::ReduceRightSub(const Factor<P>& SmallDelta)
     return b;
 }
 
+template<class P>
+bool Braid<P>::CanMerge(sint16 i) const
+{
+    for (auto it = FactorList.rbegin(); it != FactorList.rend(); it++) {
+        if (!it->CanMerge(i)) {
+            return false;
+        }
+        i = (*it)[i];
+    }
+    return true;
+}
+
+template<class P>
+Braid<P> Braid<P>::Merge(sint16 i) const
+{
+    Braid<P> b (Index() - 1);
+
+    for (auto it = FactorList.rbegin(); it != FactorList.rend(); it++) {
+        b.LeftMultiply(it->Merge(i));
+        i = (*it)[i];
+    }
+    return b;
+}
 
 template<class P>
 Braid<P>& Braid<P>::Randomize(sint32 cl)
@@ -1335,6 +1373,9 @@ std::ostream& operator<<(std::ostream& os, const Braid<P>& b)
     os << "(" << b.LeftDelta << "|";
     typename Braid<P>::ConstFactorItr i;
     for(i = b.FactorList.begin(); i != b.FactorList.end(); ++i) {
+        if (!i->Positive()) {
+            os << "- ";
+        }
         for(sint16 k = 1; k < b.Index(); ++k)
             os << i->At(k) << " ";
         os << i->At(b.Index()) << "|";
