@@ -1325,6 +1325,22 @@ Braid<P> Braid<P>::ReduceRightSub(const Factor<P>& SmallDelta)
 }
 
 template<class P>
+std::size_t Braid<P>::Hash() const
+{
+    std::size_t h = 0xcec1fadf3ee47fdb;
+    for (const auto& factor : FactorList) {
+        if (factor.Positive()) {
+            h ^= 0x0e014a572e8d57f1 + (h << 12) + (h >> 3);
+        }
+        for(sint16 i = 1; i <= Index(); i++) {
+            h ^= factor[i] + 0x0e014a572e8d57f1 + (h << 12) + (h >> 3);
+        }
+    }
+
+    return h;
+}
+
+template<class P>
 bool Braid<P>::CanMerge(sint16 i) const
 {
     for (auto it = FactorList.rbegin(); it != FactorList.rend(); it++) {

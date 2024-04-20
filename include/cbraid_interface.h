@@ -451,6 +451,8 @@ private:
     void DischargeLeftDelta();
     void DischargeRightDelta();
 public:
+    size_t Hash() const;
+
     bool CanMerge(sint32 i) const;
     Braid Merge(sint32 i) const;
 
