@@ -1094,8 +1094,8 @@ inline Braid<P>& Braid<P>::operator*=(const Braid& a)
 template<class P>
 typename Braid<P>::CanonicalFactor Braid<P>::GetPerm() const
 {
-    Factor<P> p(Index(), true, LeftDelta);
-    FactorItr it = FactorList.begin();
+    Factor<P> p(Index(), LeftDelta);
+    ConstFactorItr it = FactorList.begin();
     while (it != FactorList.end())
         p *= *(it++);
     return p *= Factor<P>(Index(), RightDelta);
