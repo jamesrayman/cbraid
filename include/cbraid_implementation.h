@@ -394,7 +394,7 @@ inline Factor<P>::Factor(sint16 n, sint32 k, bool s)
     }
 #endif
 
-    if ((uint32)k != Uninitialize) {
+    if (k != Uninitialize) {
         Delta(k);
     }
 }

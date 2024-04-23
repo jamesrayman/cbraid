@@ -197,7 +197,7 @@ public:
 
     // Constructor.  The permutation table is initialized as
     // delta^k. If k == Uninitialize, the table is left uninitialized.
-    enum { Uninitialize = 0x80000000 };
+    const static sint32 Uninitialize = 0x80000000;
     Factor(sint16 n, sint32 k = Uninitialize, bool s = true);
 
     // Copy constructor.
