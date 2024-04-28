@@ -962,6 +962,17 @@ inline bool Braid<P>::CompareWithIdentity() const
     return (LeftDelta == 0 && RightDelta == 0 && FactorList.empty());
 }
 
+template<class P>
+inline Braid<P> Braid<P>::InverseMCF() const
+{
+    Braid b(Index());
+    for(ConstRevFactorItr it = FactorList.rbegin();
+        it != FactorList.rend();
+        ++it) {
+        b.FactorList.push_back(it->Inverse());
+    }
+    return b;
+}
 
 template<class P>
 inline Braid<P> Braid<P>::Inverse() const

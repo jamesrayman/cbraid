@@ -406,6 +406,7 @@ public:
 
     // Inverting operators. a.Inverse() returns the inverse of
     // a. !a is the operator form of Inverse().
+    Braid InverseMCF() const;
     Braid Inverse() const;
     Braid operator!() const;
 
