@@ -1354,7 +1354,7 @@ std::size_t Braid<P>::Hash() const
 template<class P>
 bool Braid<P>::CanMerge(sint16 i) const
 {
-    for (auto it = FactorList.rbegin(); it != FactorList.rend(); it++) {
+    for (auto it = FactorList.begin(); it != FactorList.end(); it++) {
         if (!it->CanMerge(i)) {
             return false;
         }
@@ -1368,8 +1368,8 @@ Braid<P> Braid<P>::Merge(sint16 i) const
 {
     Braid<P> b (Index() - 1);
 
-    for (auto it = FactorList.rbegin(); it != FactorList.rend(); it++) {
-        b.LeftMultiply(it->Merge(i));
+    for (auto it = FactorList.begin(); it != FactorList.end(); it++) {
+        b.RightMultiply(it->Merge(i));
         i = (*it)[i];
     }
     return b;
